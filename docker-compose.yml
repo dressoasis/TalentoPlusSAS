@@ -1,0 +1,50 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: talentoplus_api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - CONNECTIONSTRINGS__DEFAULT=Host=db;Port=5432;Database=TalentoPlusDB;Username=postgres;Password=postgres
+      - JWT__Key=${JWT__Key}
+      - JWT__Issuer=${JWT__Issuer}
+      - JWT__Audience=${JWT__Audience}
+      - SMTP__Host=${SMTP__Host}
+      - SMTP__Port=${SMTP__Port}
+      - SMTP__User=${SMTP__User}
+      - SMTP__Password=${SMTP__Password}
+      - GEMINI__ApiKey=${GEMINI__ApiKey}
+    ports:
+      - "5111:8080"
+    depends_on:
+      - db
+    restart: always
+
+  db:
+    image: postgres:15-alpine
+    container_name: talentoplus_db
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=TalentoPlusDB
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: talentoplus_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+    restart: always
+
+volumes:
+  postgres_data:

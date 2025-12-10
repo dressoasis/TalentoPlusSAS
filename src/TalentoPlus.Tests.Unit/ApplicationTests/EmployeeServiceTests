@@ -1,0 +1,137 @@
+using Xunit;
+using Moq;
+using FluentAssertions;
+using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
+using TalentoPlus.Application.Services;
+using TalentoPlus.Application.DTOs.Employees;
+using TalentoPlus.Infrastructure.Data.Context;
+using TalentoPlus.Domain.Entities;
+using TalentoPlus.Domain.Enums;
+
+namespace TalentoPlus.Tests.Unit;
+
+public class EmployeeServiceTests
+{
+    private readonly Mock<ILogger<EmployeeService>> _loggerMock;
+    private readonly AppDbContext _context;
+    private readonly EmployeeService _service;
+
+    public EmployeeServiceTests()
+    {
+        // Configurar DbContext en memoria
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+
+        _context = new AppDbContext(options);
+        _loggerMock = new Mock<ILogger<EmployeeService>>();
+        _service = new EmployeeService(_context, _loggerMock.Object);
+    }
+
+    [Fact]
+    public async Task ImportFromExcelAsync_ShouldCreateNewEmployee_WhenEmailDoesNotExist()
+    {
+        // Arrange
+        var employeeDtos = new List<EmployeeExcelDTO>
+        {
+            new EmployeeExcelDTO
+            {
+                FirstName = "Juan",
+                LastName = "Pérez",
+                Email = "juan.perez@test.com",
+                Phone = "3001234567",
+                Address = "Calle 123",
+                BirthDate = new DateTime(1990, 1, 1),
+                Salary = 3000000,
+                HireDate = DateTime.UtcNow,
+                ProfessionalProfile = "Desarrollador",
+                Department = DepartmentEnum.Tecnologia,
+                Position = Position.Desarrollador,
+                EducationLevel = EducationLevelEnum.Profesional,
+                Status = EmploymentStatus.Activo
+            }
+        };
+
+        // Act
+        var result = await _service.ImportFromExcelAsync(employeeDtos);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.Success.Should().BeTrue();
+        result.Imported.Should().Be(1);
+        result.Updated.Should().Be(0);
+        result.Errors.Should().BeEmpty();
+
+        var employee = await _context.Employees.FirstOrDefaultAsync(e => e.Email == "juan.perez@test.com");
+        employee.Should().NotBeNull();
+        employee!.FirstName.Should().Be("Juan");
+        employee.LastName.Should().Be("Pérez");
+    }
+
+    [Fact]
+    public async Task ImportFromExcelAsync_ShouldUpdateEmployee_WhenEmailExists()
+    {
+        // Arrange
+        var existingEmployee = new Employee
+        {
+            FirstName = "Juan",
+            LastName = "Pérez",
+            Email = "juan.perez@test.com",
+            Phone = "3001234567",
+            Address = "Calle 123",
+            BirthDate = new DateTime(1990, 1, 1),
+            Salary = 3000000,
+            HireDate = DateTime.UtcNow,
+            ProfessionalProfile = "Desarrollador",
+            Department = DepartmentEnum.Tecnologia,
+            Position = Position.Desarrollador,
+            EducationLevel = EducationLevelEnum.Profesional,
+            Status = EmploymentStatus.Activo
+        };
+
+        _context.Employees.Add(existingEmployee);
+        await _context.SaveChangesAsync();
+
+        var employeeDtos = new List<EmployeeExcelDTO>
+        {
+            new EmployeeExcelDTO
+            {
+                FirstName = "Juan Actualizado",
+                LastName = "Pérez López",
+                Email = "juan.perez@test.com",
+                Phone = "3009876543",
+                Address = "Calle 456",
+                BirthDate = new DateTime(1990, 1, 1),
+                Salary = 3500000,
+                HireDate = DateTime.UtcNow,
+                ProfessionalProfile = "Senior Developer",
+                Department = DepartmentEnum.Tecnologia,
+                Position = Position.Desarrollador,
+                EducationLevel = EducationLevelEnum.Profesional,
+                Status = EmploymentStatus.Activo
+            }
+        };
+
+        // Act
+        var result = await _service.ImportFromExcelAsync(employeeDtos);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.Success.Should().BeTrue();
+        result.Imported.Should().Be(0);
+        result.Updated.Should().Be(1);
+        result.Errors.Should().BeEmpty();
+
+        var employee = await _context.Employees.FirstOrDefaultAsync(e => e.Email == "juan.perez@test.com");
+        employee.Should().NotBeNull();
+        employee!.FirstName.Should().Be("Juan Actualizado");
+        employee.Salary.Should().Be(3500000);
+    }
+
+    public void Dispose()
+    {
+        _context.Database.EnsureDeleted();
+        _context.Dispose();
+    }
+}
