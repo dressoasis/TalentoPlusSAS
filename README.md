@@ -14,8 +14,8 @@ The easiest way to run the project is using Docker Compose, which spins up the A
 
 1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/your-username/talentoplus.git
-    cd talentoplus
+    git clone https://github.com/dressoasis/TalentoPlusSAS.git
+    cd TalentoPlusSAS
     ```
 
 2.  **Configure Environment Variables:**
