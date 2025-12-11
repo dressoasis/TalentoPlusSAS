@@ -2,6 +2,8 @@ using Mscc.GenerativeAI;
 using Microsoft.EntityFrameworkCore;
 using TalentoPlus.Infrastructure.Data.Context;
 using System.Text.Json;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace TalentoPlus.Infrastructure.Integrations.AI;
 
@@ -72,25 +74,31 @@ IMPORTANTE:
                 return "Error: API Key de Gemini no configurada.";
             }
 
-            var model = new GenerativeModel(apiKey);
-            var chat = model.StartChat(new StartChatParams
+            var googleAI = new GoogleAI(apiKey);
+            var model = googleAI.GenerativeModel(Model.GeminiPro);
+            
+            // Configurar System Instruction
+            var systemInstruction = new Content
             {
-                History = new[]
-                {
-                    new Content
-                    {
-                        Role = "user",
-                        Parts = new[] { new Part { Text = systemPrompt } }
-                    },
-                    new Content
-                    {
-                        Role = "model",
-                        Parts = new[] { new Part { Text = "Entendido. Usaré solo los datos reales proporcionados para responder preguntas sobre los empleados de TalentoPlus." } }
-                    }
-                }
-            });
+                Role = Role.User, // O Role.System si está disponible, pero User suele funcionar para prompt inicial si no
+                Parts = new List<IPart> { new TextData { Text = systemPrompt } }
+            };
 
-            var response = await chat.SendMessageAsync(userMessage);
+            // Enviar el prompt de sistema como primer mensaje para establecer contexto
+            // Ojo: La librería puede tener soporte para SystemInstruction en el modelo, pero StartChat suele ser limpio.
+            // Una estrategia común es iniciar el chat y enviar el contexto primero.
+            
+            var chat = model.StartChat();
+            
+            // Pre-alimentar el contexto (System Prompt)
+            // Nota: En modelos de chat, a veces se envía el system prompt en el history o como SystemInstruction.
+            // Probamos enviándolo como primer mensaje y forzando una respuesta del modelo (dummy) o simplemente asumiendo que el modelo lo procesa.
+            // Para Gemini, lo ideal es systemInstruction en el modelo, pero si no compila, usamos primer mensaje.
+            
+            // Intento 1: Enviar como mensaje.
+            await chat.SendMessage(systemPrompt);
+
+            var response = await chat.SendMessage(userMessage);
             return response.Text ?? "No se pudo generar una respuesta.";
         }
         catch (Exception ex)

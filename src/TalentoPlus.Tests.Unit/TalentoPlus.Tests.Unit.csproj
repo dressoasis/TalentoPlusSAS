@@ -30,6 +30,7 @@
     <ProjectReference Include="..\TalentoPlus.Domain\TalentoPlus.Domain.csproj" />
     <ProjectReference Include="..\TalentoPlus.Application\TalentoPlus.Application.csproj" />
     <ProjectReference Include="..\TalentoPlus.Infrastructure.Data\TalentoPlus.Infrastructure.Data.csproj" />
+    <ProjectReference Include="..\TalentoPlus.Infrastructure.Integrations\TalentoPlus.Infrastructure.Integrations.csproj" />
   </ItemGroup>
 
 </Project>

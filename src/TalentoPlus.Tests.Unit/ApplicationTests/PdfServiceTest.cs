@@ -68,8 +68,8 @@ public class PdfServiceTests
             HireDate = new DateTime(2019, 1, 15),
             ProfessionalProfile = "Arquitecto de software especializado en microservicios.",
             Department = DepartmentEnum.Tecnologia,
-            Position = Position.Arquitecto,
-            EducationLevel = EducationLevelEnum.Postgrado,
+            Position = Position.Ingeniero,
+            EducationLevel = EducationLevelEnum.Maestria,
             Status = EmploymentStatus.Activo,
             CreatedAt = DateTime.UtcNow
         };

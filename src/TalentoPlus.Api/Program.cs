@@ -4,70 +4,66 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+
+using TalentoPlus.Api.Middlewares;
 using TalentoPlus.Infrastructure.Data.Context;
 using TalentoPlus.Infrastructure.Identity.Identity;
+using TalentoPlus.Infrastructure.Identity.Seed;
 using TalentoPlus.Application.Interfaces;
 using TalentoPlus.Infrastructure.Data.Repositories;
-using TalentoPlus.Infrastructure.Identity.Seed;
 using TalentoPlus.Infrastructure.Identity.Services;
 using TalentoPlus.Application.Services;
 using TalentoPlus.Infrastructure.Integrations;
 using TalentoPlus.Infrastructure.Integrations.Pdf;
 using TalentoPlus.Infrastructure.Integrations.Email;
 using TalentoPlus.Infrastructure.Integrations.AI;
-using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // ================================================
-// Load .env (optional)
+// Load .env
 // ================================================
 Env.TraversePath().Load();
 builder.Configuration.AddEnvironmentVariables();
 
 // ================================================
-// DbContext - PostgreSQL
+// DbContext
 // ================================================
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    var connectionString = builder.Configuration.GetConnectionString("Default");
-    options.UseNpgsql(connectionString);
+    var cs = builder.Configuration.GetConnectionString("Default");
+    options.UseNpgsql(cs);
 });
-builder.Services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<AppDbContext>());
+
+builder.Services.AddScoped<IApplicationDbContext>(
+    provider => provider.GetRequiredService<AppDbContext>()
+);
 
 // ================================================
 // Dependency Injection
 // ================================================
 builder.Services.AddScoped<IEmployeeRepository, EmployeeRepository>();
-
-// ❌ Repositorios eliminados (ya no existen tablas para enums)
-// builder.Services.AddScoped<IDepartmentRepository, DepartmentRepository>();
-// builder.Services.AddScoped<IEducationLevelRepository, EducationLevelRepository>();
-
-// Services
 builder.Services.AddScoped<EmployeeService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<JwtService>();
 
-// Integrations
 builder.Services.AddScoped<ExcelImporter>();
 builder.Services.AddScoped<IPdfService, PdfService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
-builder.Services.AddScoped<IAiService, AiService>(); // ← AI Service
+builder.Services.AddScoped<IAiService, AiService>();
+
 
 // ================================================
-// Identity
+// JWT Authentication (ANTES de Identity)
 // ================================================
 builder.Services
-    .AddIdentity<AppUser, IdentityRole>()
-    .AddEntityFrameworkStores<AppDbContext>()
-    .AddDefaultTokenProviders();
-
-// ================================================
-// JWT Authentication
-// ================================================
-builder.Services
-    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
     .AddJwtBearer(options =>
     {
         options.TokenValidationParameters = new TokenValidationParameters
@@ -82,10 +78,31 @@ builder.Services
             IssuerSigningKey = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(builder.Configuration["JWT:Key"]))
         };
-    });
+    })
+    .AddCookie(); // Agregar soporte de cookies pero NO como default
 
 // ================================================
-// Controllers & JSON options (Enums as strings)
+// Identity (sin cookies automáticas)
+// ================================================
+builder.Services
+    .AddIdentityCore<AppUser>(options =>
+    {
+        options.Password.RequireDigit = false;
+        options.Password.RequireLowercase = false;
+        options.Password.RequireUppercase = false;
+        options.Password.RequireNonAlphanumeric = false;
+        options.Password.RequiredLength = 6;
+    })
+    .AddRoles<IdentityRole>()
+    .AddEntityFrameworkStores<AppDbContext>()
+    .AddDefaultTokenProviders()
+    .AddSignInManager<SignInManager<AppUser>>();
+
+// Agregar RoleManager manualmente
+builder.Services.AddScoped<RoleManager<IdentityRole>>();
+
+// ================================================
+// Controllers + Enum strings
 // ================================================
 builder.Services.AddControllers()
     .AddJsonOptions(opt =>
@@ -95,26 +112,24 @@ builder.Services.AddControllers()
     });
 
 // ================================================
-// Swagger + JWT Support
+// Swagger
 // ================================================
 builder.Services.AddEndpointsApiExplorer();
+
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
     {
         Title = "TalentoPlus API",
-        Version = "v1",
-        Description = "API para gestión de empleados con enums, Identity y PostgreSQL."
+        Version = "v1"
     });
 
-    // JWT Bearer Config
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = "Ingresa tu JWT con el formato: Bearer {token}",
+        Description = "Bearer {token}",
         Name = "Authorization",
         In = ParameterLocation.Header,
-        Type = SecuritySchemeType.ApiKey,
-        Scheme = "Bearer"
+        Type = SecuritySchemeType.ApiKey
     });
 
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
@@ -124,11 +139,11 @@ builder.Services.AddSwaggerGen(c =>
             {
                 Reference = new OpenApiReference
                 {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
+                    Id = "Bearer",
+                    Type = ReferenceType.SecurityScheme
                 }
             },
-            new string[] {}
+            new string[]{}
         }
     });
 });
@@ -140,17 +155,18 @@ builder.Services.AddCors(opt =>
 {
     opt.AddPolicy("AllowAll", p =>
     {
-        p.AllowAnyHeader()
-         .AllowAnyMethod()
-         .AllowAnyOrigin();
+        p.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin();
     });
 });
 
 var app = builder.Build();
 
 // ================================================
-// Middleware
+// MIDDLEWARE (orden correcto)
 // ================================================
+
+app.UseMiddleware<ErrorHandlingMiddleware>(); // <-- Manejador global de errores
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -158,7 +174,6 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
 app.UseCors("AllowAll");
 
 app.UseAuthentication();
@@ -167,15 +182,15 @@ app.UseAuthorization();
 app.MapControllers();
 
 // ================================================
-// SEEDER
+// SEEDER (con migraciones primero)
 // ================================================
 using (var scope = app.Services.CreateScope())
 {
-    var services = scope.ServiceProvider;
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.Migrate(); // Garantiza que DB tiene las tablas
 
-    var userManager = services.GetRequiredService<UserManager<AppUser>>();
-    var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
-    var db = services.GetRequiredService<AppDbContext>();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
     await IdentitySeeder.SeedAsync(userManager, roleManager, db);
 }

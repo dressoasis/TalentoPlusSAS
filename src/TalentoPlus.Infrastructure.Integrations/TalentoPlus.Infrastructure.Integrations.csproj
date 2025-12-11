@@ -4,6 +4,7 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <ProjectReference Include="..\TalentoPlus.Application\TalentoPlus.Application.csproj" />
     <ProjectReference Include="..\TalentoPlus.Domain\TalentoPlus.Domain.csproj" />
+    <ProjectReference Include="..\TalentoPlus.Infrastructure.Data\TalentoPlus.Infrastructure.Data.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using TalentoPlus.Application.Interfaces;
 using TalentoPlus.Domain.Entities;
 using TalentoPlus.Domain.Enums;
 using TalentoPlus.Infrastructure.Identity.Identity;
@@ -11,13 +12,11 @@ public static class IdentitySeeder
     public static async Task SeedAsync(
         UserManager<AppUser> userManager,
         RoleManager<IdentityRole> roleManager,
-        DbContext db)
+        IApplicationDbContext db)
     {
         string[] roles = { "Admin", "User" };
 
-        // ==========================
-        // CREAR ROLES
-        // ===========================
+        // Crear Roles
         foreach (var role in roles)
         {
             if (!await roleManager.RoleExistsAsync(role))
@@ -26,12 +25,10 @@ public static class IdentitySeeder
             }
         }
 
-        // ==========================
-        // CREAR USUARIO ADMIN
-        // ===========================
+        // Crear usuario admin
         var adminEmail = "admin@talentoplus.com";
-
         var adminUser = await userManager.FindByEmailAsync(adminEmail);
+
         if (adminUser == null)
         {
             adminUser = new AppUser
@@ -43,23 +40,20 @@ public static class IdentitySeeder
             };
 
             var result = await userManager.CreateAsync(adminUser, "Admin123*");
-
             if (result.Succeeded)
             {
                 await userManager.AddToRoleAsync(adminUser, "Admin");
             }
         }
 
-        // ==========================
-        // CREAR EMPLOYEE DEL ADMIN
-        // ===========================
-        if (adminUser.EmployeeId == null)
+        // Crear registro Employee para el admin
+        if (!db.Employees.Any(e => e.Email == adminEmail))
         {
             var adminEmployee = new Employee
             {
                 FirstName = "Admin",
                 LastName = "Principal",
-                BirthDate = DateTime.SpecifyKind(new DateTime(1990, 1, 1), DateTimeKind.Utc),
+                BirthDate = DateTime.UtcNow.AddYears(-30),
                 Email = adminEmail,
                 Phone = "0000000000",
                 Address = "Sistema",
@@ -73,11 +67,9 @@ public static class IdentitySeeder
                 Status = EmploymentStatus.Activo
             };
 
-            // Insertar Employee
-            db.Set<Employee>().Add(adminEmployee);
+            db.Employees.Add(adminEmployee);
             await db.SaveChangesAsync();
 
-            // Asociar AppUser → Employee
             adminUser.EmployeeId = adminEmployee.Id;
             await userManager.UpdateAsync(adminUser);
         }
