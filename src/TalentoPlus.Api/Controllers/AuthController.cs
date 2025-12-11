@@ -1,6 +1,9 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using TalentoPlus.Application.Auth;
 using TalentoPlus.Infrastructure.Identity.Services;
+using TalentoPlus.Infrastructure.Integrations.Email;
 
 namespace TalentoPlus.Api.Controllers;
 
@@ -9,10 +12,17 @@ namespace TalentoPlus.Api.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly AuthService _authService;
+    private readonly IEmailService _emailService;
+    private readonly ILogger<AuthController> _logger;
 
-    public AuthController(AuthService authService)
+    public AuthController(
+        AuthService authService,
+        IEmailService emailService,
+        ILogger<AuthController> logger)
     {
         _authService = authService;
+        _emailService = emailService;
+        _logger = logger;
     }
 
     [HttpPost("login")]
@@ -27,6 +37,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("register")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Register(RegisterRequest request)
     {
         var ok = await _authService.RegisterAsync(request);
@@ -34,6 +45,18 @@ public class AuthController : ControllerBase
         if (!ok)
             return BadRequest("No se pudo crear el usuario.");
 
-        return Ok("Usuario creado.");
+        // Enviar correo de bienvenida
+        try
+        {
+            await _emailService.SendWelcomeEmailAsync(request.Email, request.FullName);
+            _logger.LogInformation("Correo de bienvenida enviado a {Email}", request.Email);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al enviar correo de bienvenida a {Email}", request.Email);
+            // No fallar el registro si el correo falla
+        }
+
+        return Ok("Usuario creado exitosamente.");
     }
 }
