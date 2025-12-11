@@ -98,15 +98,33 @@ namespace TalentoPlus.Infrastructure.Integrations
 
         private DateTime GetDateValue(IXLCell cell)
         {
-            if (cell.TryGetValue(out DateTime dateValue))
-                return dateValue;
+            DateTime dateValue;
             
-            // Intentar parsear como string
-            var cellValue = cell.GetString();
-            if (DateTime.TryParse(cellValue, out DateTime parsedDate))
-                return parsedDate;
+            if (cell.TryGetValue(out DateTime cellDate))
+            {
+                dateValue = cellDate;
+            }
+            else
+            {
+                // Intentar parsear como string
+                var cellValue = cell.GetString();
+                if (!DateTime.TryParse(cellValue, out dateValue))
+                {
+                    throw new FormatException($"No se pudo convertir '{cellValue}' a fecha");
+                }
+            }
             
-            throw new FormatException($"No se pudo convertir '{cellValue}' a fecha");
+            // PostgreSQL requiere UTC - convertir si no lo es
+            if (dateValue.Kind == DateTimeKind.Unspecified)
+            {
+                dateValue = DateTime.SpecifyKind(dateValue, DateTimeKind.Utc);
+            }
+            else if (dateValue.Kind == DateTimeKind.Local)
+            {
+                dateValue = dateValue.ToUniversalTime();
+            }
+            
+            return dateValue;
         }
 
         private decimal GetDecimalValue(IXLCell cell)

@@ -92,9 +92,17 @@ public partial class EmployeeService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error al guardar cambios en la base de datos");
+            var innerMessage = ex.InnerException?.Message ?? ex.Message;
+            _logger.LogError(ex, "Error al guardar cambios en la base de datos. Inner: {Inner}", innerMessage);
             result.Success = false;
-            result.Errors.Add($"Error al guardar: {ex.Message}");
+            result.Errors.Add($"Error al guardar: {innerMessage}");
+            
+            // Log stack trace para debugging
+            _logger.LogError("Stack trace: {StackTrace}", ex.StackTrace);
+            if (ex.InnerException != null)
+            {
+                _logger.LogError("Inner exception: {InnerException}", ex.InnerException.ToString());
+            }
         }
 
         return result;
