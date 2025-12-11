@@ -4,6 +4,7 @@ namespace TalentoPlus.Application.DTOs.Employees;
 
 public class EmployeeExcelDTO
 {
+    public string Document { get; set; } = string.Empty;
     public string FirstName { get; set; }
     public string LastName { get; set; }
 

@@ -17,11 +17,38 @@ namespace TalentoPlus.Infrastructure.Integrations
         {
             var list = new List<EmployeeExcelDTO>();
 
+            // ================================================================
+            // 🔥 IMPRIMIR HOJAS DETECTADAS POR CLOSEDXML
+            // ================================================================
+            Console.WriteLine("=== HOJAS DETECTADAS EN EL EXCEL ===");
+
             using var workbook = new XLWorkbook(stream);
 
-            // 👇 Buscar hoja por nombre
-            var sheet = workbook.Worksheet("Empleados");
+            foreach (var ws in workbook.Worksheets)
+            {
+                Console.WriteLine(ws.Name);
+            }
 
+            Console.WriteLine("====================================");
+
+
+            // ================================================================
+            // 📌 Usar la PRIMERA hoja (sin importar el nombre)
+            // ================================================================
+            var sheet = workbook.Worksheet(1); // Primera hoja
+
+            if (sheet == null)
+            {
+                Console.WriteLine("❌ No se encontró ninguna hoja en el Excel.");
+                return list;
+            }
+
+            Console.WriteLine($"✅ Procesando hoja: {sheet.Name}");
+
+
+            // ================================================================
+            // 📌 Procesar filas desde Fila 2
+            // ================================================================
             int row = 2; // Encabezados en fila 1
 
             // Mientras haya documento (columna A)
@@ -34,7 +61,7 @@ namespace TalentoPlus.Infrastructure.Integrations
                         Document = sheet.Cell(row, 1).GetString(),
                         FirstName = sheet.Cell(row, 2).GetString(),
                         LastName = sheet.Cell(row, 3).GetString(),
-                        BirthDate = sheet.Cell(row, 4).GetDateTime(),
+                        BirthDate = GetDateValue(sheet.Cell(row, 4)),
                         Address = sheet.Cell(row, 5).GetString(),
                         Phone = sheet.Cell(row, 6).GetString(),
                         Email = sheet.Cell(row, 7).GetString(),
@@ -42,9 +69,9 @@ namespace TalentoPlus.Infrastructure.Integrations
                         // Cargo
                         Position = EnumParser.ParsePosition(sheet.Cell(row, 8).GetString()),
 
-                        Salary = sheet.Cell(row, 9).GetValue<decimal>(),
+                        Salary = GetDecimalValue(sheet.Cell(row, 9)),
 
-                        HireDate = sheet.Cell(row, 10).GetDateTime(),
+                        HireDate = GetDateValue(sheet.Cell(row, 10)),
 
                         // Estado (Activo, Vacaciones, etc.)
                         Status = EnumParser.ParseStatus(sheet.Cell(row, 11).GetString()),
@@ -68,5 +95,35 @@ namespace TalentoPlus.Infrastructure.Integrations
 
             return list;
         }
+
+        private DateTime GetDateValue(IXLCell cell)
+        {
+            if (cell.TryGetValue(out DateTime dateValue))
+                return dateValue;
+            
+            // Intentar parsear como string
+            var cellValue = cell.GetString();
+            if (DateTime.TryParse(cellValue, out DateTime parsedDate))
+                return parsedDate;
+            
+            throw new FormatException($"No se pudo convertir '{cellValue}' a fecha");
+        }
+
+        private decimal GetDecimalValue(IXLCell cell)
+        {
+            if (cell.TryGetValue(out double doubleValue))
+                return (decimal)doubleValue;
+            
+            if (cell.TryGetValue(out decimal decimalValue))
+                return decimalValue;
+            
+            // Intentar parsear como string
+            var cellValue = cell.GetString();
+            if (decimal.TryParse(cellValue, out decimal parsedDecimal))
+                return parsedDecimal;
+            
+            throw new FormatException($"No se pudo convertir '{cellValue}' a número");
+        }
     }
 }
+
