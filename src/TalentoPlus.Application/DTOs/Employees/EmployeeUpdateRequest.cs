@@ -6,6 +6,7 @@ public class EmployeeUpdateRequest
 {
     public Guid Id { get; set; }
 
+    public string Document { get; set; }
     public string FirstName { get; set; }
     public string LastName { get; set; }
 

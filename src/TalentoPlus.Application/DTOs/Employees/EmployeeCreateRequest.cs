@@ -8,6 +8,7 @@ namespace TalentoPlus.Application.DTOs.Employees;
 // ========================================
 public class EmployeeCreateRequest
 {
+    public string Document { get; set; }
     public string FirstName { get; set; }
     public string LastName { get; set; }
     public DateTime BirthDate { get; set; }

@@ -37,6 +37,7 @@ public partial class EmployeeService
                 if (existingEmployee != null)
                 {
                     // ACTUALIZAR empleado existente
+                    existingEmployee.Document = dto.Document;
                     existingEmployee.FirstName = dto.FirstName;
                     existingEmployee.LastName = dto.LastName;
                     existingEmployee.BirthDate = dto.BirthDate;
@@ -59,6 +60,7 @@ public partial class EmployeeService
                     // CREAR nuevo empleado
                     var newEmployee = new Employee
                     {
+                        Document = dto.Document,
                         FirstName = dto.FirstName,
                         LastName = dto.LastName,
                         BirthDate = dto.BirthDate,
@@ -155,6 +157,7 @@ public partial class EmployeeService
     {
         var employee = new Employee
         {
+            Document = dto.Document,
             FirstName = dto.FirstName,
             LastName = dto.LastName,
             BirthDate = DateTime.SpecifyKind(dto.BirthDate, DateTimeKind.Utc),
@@ -183,6 +186,7 @@ public partial class EmployeeService
         var employee = await _context.Employees.FindAsync(dto.Id);
         if (employee == null) return false;
 
+        employee.Document = dto.Document;
         employee.FirstName = dto.FirstName;
         employee.LastName = dto.LastName;
         employee.BirthDate = DateTime.SpecifyKind(dto.BirthDate, DateTimeKind.Utc);

@@ -1,50 +1,92 @@
+version: "3.9"
+
 services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: talentoplus_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: TalentoPlusDB
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5433:5432" # Changed to 5433 to avoid conflict with local PostgreSQL
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - talentoplus-network
+
+  # TalentoPlus API
   app:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: talentoplus_api
     environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - CONNECTIONSTRINGS__DEFAULT=Host=db;Port=5432;Database=TalentoPlusDB;Username=postgres;Password=postgres
-      - JWT__Key=${JWT__Key}
-      - JWT__Issuer=${JWT__Issuer}
-      - JWT__Audience=${JWT__Audience}
-      - SMTP__Host=${SMTP__Host}
-      - SMTP__Port=${SMTP__Port}
-      - SMTP__User=${SMTP__User}
-      - SMTP__Password=${SMTP__Password}
-      - GEMINI__ApiKey=${GEMINI__ApiKey}
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      ASPNETCORE_URLS: http://+:8080
+      # Database
+      CONNECTIONSTRINGS__DEFAULT: Host=db;Port=5432;Database=TalentoPlusDB;Username=postgres;Password=postgres;Pooling=true;
+      # JWT
+      JWT__Key: ${JWT__Key}
+      JWT__Issuer: ${JWT__Issuer}
+      JWT__Audience: ${JWT__Audience}
+      # SMTP
+      SMTP__Host: ${SMTP__Host}
+      SMTP__Port: ${SMTP__Port}
+      SMTP__User: ${SMTP__User}
+      SMTP__Password: ${SMTP__Password}
+      SMTP__From: ${SMTP__From}
+      # AI
+      GEMINI__ApiKey: ${GEMINI__ApiKey}
     ports:
       - "5111:8080"
     depends_on:
-      - db
-    restart: always
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - talentoplus-network
 
-  db:
-    image: postgres:15-alpine
-    container_name: talentoplus_db
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=TalentoPlusDB
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    restart: always
-
+  # pgAdmin (Optional - for database management)
   pgadmin:
-    image: dpage/pgadmin4
+    image: dpage/pgadmin4:latest
     container_name: talentoplus_pgadmin
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@admin.com
-      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@admin.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
     ports:
       - "5050:80"
     depends_on:
       - db
-    restart: always
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    restart: unless-stopped
+    networks:
+      - talentoplus-network
+    profiles:
+      - dev # Only starts with --profile dev
 
 volumes:
   postgres_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+networks:
+  talentoplus-network:
+    driver: bridge

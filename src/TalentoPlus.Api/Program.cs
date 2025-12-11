@@ -167,11 +167,9 @@ var app = builder.Build();
 
 app.UseMiddleware<ErrorHandlingMiddleware>(); // <-- Manejador global de errores
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+// Swagger - Habilitado en todos los entornos para facilitar pruebas
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 app.UseCors("AllowAll");

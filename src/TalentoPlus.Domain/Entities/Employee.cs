@@ -9,6 +9,7 @@ public class Employee
     // ===========================
     // Datos personales
     // ===========================
+    public string Document { get; set; }  // Documento de identidad (cédula)
     public string FirstName { get; set; }
     public string LastName { get; set; }
     public DateTime BirthDate { get; set; }

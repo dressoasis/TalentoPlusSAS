@@ -51,6 +51,7 @@ public static class IdentitySeeder
         {
             var adminEmployee = new Employee
             {
+                Document = "0000000000",  // Documento del administrador
                 FirstName = "Admin",
                 LastName = "Principal",
                 BirthDate = DateTime.UtcNow.AddYears(-30),

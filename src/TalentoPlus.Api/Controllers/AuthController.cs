@@ -40,15 +40,21 @@ public class AuthController : ControllerBase
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Register(RegisterRequest request)
     {
-        var ok = await _authService.RegisterAsync(request);
+        _logger.LogInformation("Intentando registrar usuario: {Email}", request.Email);
+        
+        var (success, errorMessage) = await _authService.RegisterAsync(request);
 
-        if (!ok)
-            return BadRequest("No se pudo crear el usuario.");
+        if (!success)
+        {
+            _logger.LogWarning("Fallo al registrar usuario {Email}: {Error}", request.Email, errorMessage);
+            return BadRequest(new { error = errorMessage ?? "No se pudo crear el usuario." });
+        }
 
         // Enviar correo de bienvenida
         try
         {
-            await _emailService.SendWelcomeEmailAsync(request.Email, request.FullName);
+            var fullName = $"{request.FirstName} {request.LastName}";
+            await _emailService.SendWelcomeEmailAsync(request.Email, fullName);
             _logger.LogInformation("Correo de bienvenida enviado a {Email}", request.Email);
         }
         catch (Exception ex)
