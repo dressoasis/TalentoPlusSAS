@@ -157,12 +157,12 @@ public partial class EmployeeService
         {
             FirstName = dto.FirstName,
             LastName = dto.LastName,
-            BirthDate = dto.BirthDate,
+            BirthDate = DateTime.SpecifyKind(dto.BirthDate, DateTimeKind.Utc),
             Address = dto.Address,
             Phone = dto.Phone,
             Email = dto.Email,
             Salary = dto.Salary,
-            HireDate = dto.HireDate,
+            HireDate = DateTime.SpecifyKind(dto.HireDate, DateTimeKind.Utc),
             Status = (EmploymentStatus)dto.Status,
             ProfessionalProfile = dto.ProfessionalProfile,
 
@@ -185,12 +185,12 @@ public partial class EmployeeService
 
         employee.FirstName = dto.FirstName;
         employee.LastName = dto.LastName;
-        employee.BirthDate = dto.BirthDate;
+        employee.BirthDate = DateTime.SpecifyKind(dto.BirthDate, DateTimeKind.Utc);
         employee.Address = dto.Address;
         employee.Phone = dto.Phone;
         employee.Email = dto.Email;
         employee.Salary = dto.Salary;
-        employee.HireDate = dto.HireDate;
+        employee.HireDate = DateTime.SpecifyKind(dto.HireDate, DateTimeKind.Utc);
         employee.Status = (EmploymentStatus)dto.Status;
         employee.ProfessionalProfile = dto.ProfessionalProfile;
 
